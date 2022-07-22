@@ -1,0 +1,13 @@
+Package: BaronKennyU
+Type: Package
+Title: Sensitivity Analysis for the Baron-Kenny Approach
+Version: 0.1.0
+Author: Mingrui Zhang and Peng Ding
+Maintainer: Mingrui Zhang <mingrui_zhang@berkeley.edu>
+Description: The package implements the sharp and interpretable sensitivity 
+  analysis methods for the Baron-Kenny approach; see Zhang and Ding (2022). 
+Imports: svMisc
+License: GPL-3
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.1.2
