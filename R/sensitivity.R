@@ -178,6 +178,47 @@ bku_rv_direct <- function(y, m, a, c = NULL, randomized = F, rho_values = c(1:99
   return(list("summary_table" = summary_tab, "worst_point" = point_rho, "worst_t" = t_rho))
 }
 
+#' Compute the worst point estimate and t statistic for the direct effect under upper bound of the R parameters
+#' @param y a vector of the outcome variable
+#' @param m a matrix of the mediator variables
+#' @param a a vector of the exposure variable
+#' @param c a matrix of the covariates
+#' @param rho_y a number of upper bound of the R parameter for the outcome-confounder correlation
+#' @param rho_m a number of upper bound of the R parameter for the mediator-confounder correlation
+#' @param rho_a a number of upper bound of the R parameter for the exposure-confounder correlation
+#' @return the worst point estimate, and the worst t statistic
+#' @examples
+#' set.seed(1234)
+#' library(MASS)
+#' n = 200
+#' a = rnorm(n)
+#' c = as.matrix(rnorm(n))
+#' m = mvrnorm(n, mu = c(0, 0), Sigma = matrix(c(1,0.2,0.2,0.8), 2, 2))
+#' m = m + cbind(2.5 * a, 1.5 * a)
+#' y = a + 0.2 * m[, 1] + 0.25 * m[, 2] + rnorm(n)
+#' result = bku_worst_direct(y, m, a, c, 0.1, 0.1, 0.1)
+#' @importFrom stats cor cov lm runif sd var
+#' @importFrom MASS mvrnorm
+#' @importFrom expm sqrtm
+#' @export
+bku_worst_direct <- function(y, m, a, c = NULL, rho_y, rho_m, rho_a){
+  n <- length(y)
+  m <- as.matrix(m)
+  Ts <- direct_compute_T(y, m, a, c)
+  T0 <- Ts[1]
+  T1 <- Ts[2]
+  T2 <- Ts[-c(1,2)]
+  sample_index <- replicate(1000, sample(n, n, replace = T))
+  Ts_bootstrap <- apply(sample_index, 2, function(x) direct_compute_T(y[x], m[x, ], a[x], c[x, ]))
+  T0_bootstrap <- Ts_bootstrap[1, ]
+  T1_bootstrap <- Ts_bootstrap[2, ]
+  T2_bootstrap <- t(Ts_bootstrap[-c(1,2), ])
+  wp <- direct_point_solve(T0, T1, T2, rho_y, rho_m, rho_a)
+  wt <- direct_t_solve(T0, T1, T2, T0_bootstrap, T1_bootstrap, T2_bootstrap, rho_y, rho_m, rho_a)
+  return(list("worst_point" = wp, "worst_t" = wt))
+}
+
+
 #' Compute the sensitivity bound for the direct effect with prespecified sensitivity parameters
 #' @param y a vector of the outcome variable
 #' @param m a matrix of the mediator variables
@@ -518,6 +559,55 @@ bku_rv_indirect <- function(y, m, a, c = NULL, randomized = F, rho_values = c(1:
   names(summary_tab) <- c("Est.", "Std. Error", "t value", "R.V. for Est.", "R.V. for 95% C.I.")
   return(list("summary_table" = summary_tab, "worst_point" = point_rho, "worst_t" = t_rho))
 }
+
+#' Compute the worst point estimate and t statistic for the indirect effect under upper bound of the R parameters
+#' @param y a vector of the outcome variable
+#' @param m a matrix of the mediator variables
+#' @param a a vector of the exposure variable
+#' @param c a matrix of the covariates
+#' @param rho_y a number of upper bound of the R parameter for the outcome-confounder correlation
+#' @param rho_m a number of upper bound of the R parameter for the mediator-confounder correlation
+#' @param rho_a a number of upper bound of the R parameter for the exposure-confounder correlation
+#' @return the worst point estimate, and the worst t statistic
+#' @examples
+#' set.seed(1234)
+#' library(MASS)
+#' n = 200
+#' a = rnorm(n)
+#' c = as.matrix(rnorm(n))
+#' m = mvrnorm(n, mu = c(0, 0), Sigma = matrix(c(1,0.2,0.2,0.8), 2, 2))
+#' m = m + cbind(2.5 * a, 1.5 * a)
+#' y = a + 0.2 * m[, 1] + 0.25 * m[, 2] + rnorm(n)
+#' result = bku_worst_indirect(y, m, a, c, 0.1, 0.1, 0.1)
+#' @importFrom stats cor cov lm runif sd var
+#' @importFrom MASS mvrnorm
+#' @importFrom expm sqrtm
+#' @export
+bku_worst_indirect <- function(y, m, a, c = NULL, rho_y, rho_m, rho_a, vector_u = F){
+  n <- length(y)
+  m <- as.matrix(m)
+  dim_m <- dim(m)[2]
+  Ts <- indirect_compute_T(y, m, a, c)
+  T3 <- Ts[1]
+  T4 <- Ts[2]
+  T5 <- Ts[3: (2+dim_m)]
+  T6 <- Ts[(3+dim_m): (2+2*dim_m)]
+  sample_index <- replicate(1000, sample(n, n, replace = T))
+  Ts_bootstrap <- apply(sample_index, 2, function(x) indirect_compute_T(y[x], m[x, ], a[x], c[x, ]))
+  T3_bootstrap <- Ts_bootstrap[1, ]
+  T4_bootstrap <- Ts_bootstrap[2, ]
+  T5_bootstrap <- t(Ts_bootstrap[3: (2+dim_m), ])
+  T6_bootstrap <- t(Ts_bootstrap[(3+dim_m): (2+2*dim_m), ])
+  if (vector_u){
+    wp <- indirect_point_solve_vu(T3, T4, T5, T6, rho_y, rho_m, rho_a)
+    wt <- indirect_t_solve_vu(T3, T4, T5, T6, T3_bootstrap, T4_bootstrap, T5_bootstrap, T6_bootstrap, rho_y, rho_m, rho_a)
+  }else{
+    wp <- indirect_point_solve(T3, T4, T5, T6, rho_y, rho_m, rho_a)
+    wt <- indirect_t_solve(T3, T4, T5, T6, T3_bootstrap, T4_bootstrap, T5_bootstrap, T6_bootstrap, rho_y, rho_m, rho_a)
+  }
+  return(list("worst_point" = wp, "worst_t" = wt))
+}
+
 
 #' Compute the sensitivity bound for the indirect effect with prespecified sensitivity parameters
 #' @param y a vector of the outcome variable
@@ -965,3 +1055,7 @@ bku_fb <- function(y, m, a, c, j, ky_bound, km_bound, ka_bound){
   indirect_t <- fb_indirect_t_solve(T_point, T_bootstrap, rho_y, rho_m, rho_a)
   return(c(direct_point, indirect_point, direct_t, indirect_t))
 }
+
+
+
+
