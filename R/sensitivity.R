@@ -254,8 +254,8 @@ bku_direct <- function(y, m, a, c = NULL, Ry, Rm, Ra){
   T0_bootstrap <- Ts_bootstrap[1, ]
   T1_bootstrap <- Ts_bootstrap[2, ]
   T2_bootstrap <- t(Ts_bootstrap[-c(1,2), ])
-  phi1 <- (Ry * Ra) / sqrt(1 - Ra^2) / sqrt(1 - sqrt(sum(Rm^2)))
-  phi2 <- (Ry * Rm) / sqrt(1 - sqrt(sum(Rm^2)))
+  phi1 <- (Ry * Ra) / sqrt(1 - Ra^2) / sqrt(1 - (sum(Rm^2)))
+  phi2 <- (Ry * Rm) / sqrt(1 - (sum(Rm^2)))
   point_est <- T0 + T1 * phi1 + sum(T2 * phi2)
   if (length(T2) > 1){
     std_err <- sd(T0_bootstrap + T1_bootstrap * phi1 + T2_bootstrap %*% phi2)
